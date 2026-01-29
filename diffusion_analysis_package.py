@@ -2,9 +2,6 @@
 # Description: Code modules that are used for the diffusion analyses.
 
 
-
-
-
 # class ClassName(object):
 
 # 	"""docstring for ClassName"""
@@ -14,17 +11,34 @@
 # 		self.MeasurementName = arg
 		
 
+# ************************************
+# Imports
+# ************************************
 
+# System
+import sys
+import os
+
+# Math
+import numpy as np
+import scipy
+from scipy import stats
+from scipy.optimize import curve_fit, least_squares, leastsq
+from scipy.integrate import solve_ivp
+
+# Plotting
+import matplotlib.pyplot as plt
+import plotly.express as px
+
+# RAD7
+import Rad7_API
 
 
 
 
 def getData(RAD7_name='SDSMT', fileName='231218_diff_hotSide_leakCheck', binSize_hours=1/3, onlyPo218=True):
 
-	import sys
 	sys.path.append('../../pythonCode/')
-	import Rad7_API
-	import os
 
 	# path and filename of data
 	dataPath = '../../data/'+RAD7_name+'/'
@@ -37,10 +51,7 @@ def getData(RAD7_name='SDSMT', fileName='231218_diff_hotSide_leakCheck', binSize
 
 def placeCut(df, t_i='2023-12-15 00:00:00', t_f='2023-12-16 06:00:00'):
 
-	import sys
 	sys.path.append('../../pythonCode/')
-	import Rad7_API
-	import os
 
 	# select a part of df
 	dfc = Rad7_API.placeTimeCut(df, t_i, t_f)
@@ -52,8 +63,6 @@ def placeCut(df, t_i='2023-12-15 00:00:00', t_f='2023-12-16 06:00:00'):
 
 
 def goodnessOfFit(observed, expected, sigma, numberOfFittedParams):
-	import numpy as np
-	from scipy import stats
 	
 	ndf = len(observed)-numberOfFittedParams
 
@@ -76,7 +85,6 @@ def goodnessOfFit(observed, expected, sigma, numberOfFittedParams):
 
 
 def exponentialFit(t, amp, t_char, baseline):
-	import numpy as np
 
 	y = amp * np.exp(-t/t_char) + baseline
 
@@ -88,8 +96,6 @@ def exponentialFit_zeroBaseline(t, amp, t_char): return exponentialFit(t, amp, t
 
 
 def performFit(data_t, data_y, data_u, p0, bounds, fitting_function=exponentialFit):
-	import numpy as np
-	from scipy.optimize import curve_fit
 
 	popt, pcov = curve_fit(fitting_function, xdata=data_t, ydata=data_y, sigma=data_u, p0=p0, bounds=bounds)
 
@@ -108,9 +114,6 @@ def performFit(data_t, data_y, data_u, p0, bounds, fitting_function=exponentialF
 
 
 def getPlot(df, dfc=None, in_days=False, save_plot_as=None, savePath='Plots/', measurementName='dummyMeasurement', extra_curves=None, xLimits=None, yLimits=None, yAxis=None):
-
-	import matplotlib.pyplot as plt
-	import os
 
 	# get binSize_hours:
 	binSize_hours = df.Hours.iloc[1] - df.Hours.iloc[0]
@@ -197,7 +200,6 @@ def getPlot(df, dfc=None, in_days=False, save_plot_as=None, savePath='Plots/', m
 
 def getPlot_interactive(df,  xColumn='Days', yColumn='RnConc', errorColumn='Uncert_RnConc'):
 
-	import plotly.express as px
 	fig = px.scatter(df, x=xColumn, y=yColumn,error_y=errorColumn)
 
 	fig.show()
@@ -205,16 +207,13 @@ def getPlot_interactive(df,  xColumn='Days', yColumn='RnConc', errorColumn='Unce
 
 
 ###################											 ###################
-###################			NUMERICAL SOLUTION			   ###################
+###################			  NUMERICAL SOLUTION             ###################
 ###################											 ###################
 
 
 # DEFINE DIFFERENTIAL EQUATIONS AND MINIMIZER
 
 def model_full(vs, minimize_model=False, D_val=1e-13, P_val=1e-13, tau_cold_val=5.516, p0=None, bounds=None, return_expected=False, returnGOF=False, verbose=False):
-	
-	from scipy.integrate import solve_ivp
-	import numpy as np
 
 	# Numerical Solution Technical Parameters
 	total_time = vs.dfc.Days.iloc[-1] * 24 * 3600
@@ -338,7 +337,6 @@ def model_full(vs, minimize_model=False, D_val=1e-13, P_val=1e-13, tau_cold_val=
 	# print('Y', Y)
 
 	if minimize_model==True:
-		from scipy.optimize import curve_fit, least_squares, leastsq
 		
 		# Guess and Bounds
 		if p0 is None:
