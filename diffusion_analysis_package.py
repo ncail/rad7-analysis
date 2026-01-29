@@ -127,7 +127,18 @@ def getPlot(df, dfc=None, in_days=False, save_plot_as=None, savePath='Plots/', m
 	plt.figure(figsize=(20,8))
 
 	# plot df
-	plt.errorbar(time, df.RnConc, df.Uncert_RnConc, fmt='o', color = 'k', lw=3, capsize=10, alpha = 1, capthick=3, label='All data')
+	plt.errorbar(
+		time, 
+		df.RnConc, 
+		df.Uncert_RnConc, 
+		fmt='o', 
+		color = 'k', 
+		lw=3, 
+		capsize=10, 
+		alpha = 1, 
+		capthick=3, 
+		label='All data'
+	)
 
 
 	# plotting selected region of df (i.e., dfc) that will be used for fitting?
@@ -139,7 +150,18 @@ def getPlot(df, dfc=None, in_days=False, save_plot_as=None, savePath='Plots/', m
 			# Get time between start of df and dfc in days:
 			timeShift = (dfc['DateTime'].iloc[0] - df['DateTime'].iloc[0]).total_seconds() / 86400
 
-			plt.errorbar(dfc.Days + timeShift, dfc.RnConc, dfc.Uncert_RnConc, fmt='o', color = 'dodgerblue', lw=3, capsize=10, alpha = 1, capthick=3, label='Selected data')
+			plt.errorbar(
+				dfc.Days + timeShift, 
+				dfc.RnConc, 
+				dfc.Uncert_RnConc, 
+				fmt='o', 
+				color = 'dodgerblue', 
+				lw=3, 
+				capsize=10, 
+				alpha = 1, 
+				capthick=3, 
+				label='Selected data'
+			)
 
 
 			if extra_curves is not None:
@@ -151,11 +173,27 @@ def getPlot(df, dfc=None, in_days=False, save_plot_as=None, savePath='Plots/', m
 					for k in ['x', 'y']:
 						plot_meta.pop(k)
 					
-					plt.plot(x + timeShift, y, **plot_meta, zorder=10)
+					plt.plot(
+						x + timeShift, 
+						y, 
+						**plot_meta, 
+						zorder=10
+					)
 
 
 		else: # we are plotting in datetime!
-			plt.errorbar(dfc.DateTime, dfc.RnConc, dfc.Uncert_RnConc, fmt='o', color = 'dodgerblue', lw=3, capsize=10, alpha = 1, capthick=3, label='Selected data')
+			plt.errorbar(
+				dfc.DateTime, 
+				dfc.RnConc, 
+				dfc.Uncert_RnConc, 
+				fmt='o', 
+				color = 'dodgerblue', 
+				lw=3, 
+				capsize=10, 
+				alpha = 1, 
+				capthick=3, 
+				label='Selected data'
+			)
 
 			if extra_curves is not None:
 				print(f'CAUTION: extra_curve is only plotting over Days (not DateTime).')
@@ -200,7 +238,12 @@ def getPlot(df, dfc=None, in_days=False, save_plot_as=None, savePath='Plots/', m
 
 def getPlot_interactive(df,  xColumn='Days', yColumn='RnConc', errorColumn='Uncert_RnConc'):
 
-	fig = px.scatter(df, x=xColumn, y=yColumn,error_y=errorColumn)
+	fig = px.scatter(
+		df, 
+		x=xColumn, 
+		y=yColumn,
+		error_y=errorColumn
+	)
 
 	fig.show()
 
@@ -280,13 +323,29 @@ def model_full(vs, minimize_model=False, D_val=1e-13, P_val=1e-13, tau_cold_val=
 	
 		# calculate radon concentration within membrane
 		C0 = np.zeros(space_steps)
-		solm = solve_ivp(pde_InMembrane,t_span = [t_space[0], t_space[-1]], y0=C0, t_eval=t_space, method='RK45', dense_output=True, )
+		solm = solve_ivp(
+			pde_InMembrane,
+			t_span = [t_space[0], 
+			t_space[-1]], 
+			y0=C0, 
+			t_eval=t_space, 
+			method='RK45', 
+			dense_output=True, 
+		)
 	
 		# print('Finished solving for radon concentration within the membrane.', D, vs.C_H)
 	
 		# calculate cold-side radon concentration
 		C0 = [vs.C_initial]
-		sol = solve_ivp(pde_coldSide, t_span = [t_space[0], t_space[-1]], y0=C0, t_eval=t_space, method='RK45', dense_output=True)
+		sol = solve_ivp(
+			pde_coldSide, 
+			t_span = [t_space[0], 
+			t_space[-1]], 
+			y0=C0, 
+			t_eval=t_space, 
+			method='RK45', 
+			dense_output=True
+		)
 	
 		# print('Finished solving for radon concentration in the cold-side volume.', D, vs.C_H)
 
@@ -311,13 +370,29 @@ def model_full(vs, minimize_model=False, D_val=1e-13, P_val=1e-13, tau_cold_val=
 	
 		# calculate radon concentration within membrane
 		C0 = np.zeros(space_steps)
-		solm = solve_ivp(pde_InMembrane,t_span = [t_space[0], t_space[-1]], y0=C0, t_eval=t_space, method='RK45', dense_output=True, )
+		solm = solve_ivp(
+			pde_InMembrane,
+			t_span = [t_space[0], 
+			t_space[-1]], 
+			y0=C0, 
+			t_eval=t_space, 
+			method='RK45', 
+			dense_output=True, 
+		)
 	
 		# print('Finished solving for radon concentration within the membrane.', D, vs.C_H)
 	
 		# calculate cold-side radon concentration
 		C0 = [vs.C_initial]
-		sol = solve_ivp(pde_coldSide, t_span = [t_space[0], t_space[-1]], y0=C0, t_eval=t_space, method='RK45', dense_output=True)
+		sol = solve_ivp(
+			pde_coldSide, 
+			t_span = [t_space[0], 
+			t_space[-1]], 
+			y0=C0, 
+			t_eval=t_space, 
+			method='RK45', 
+			dense_output=True
+		)
 	
 		# print('Finished solving for radon concentration in the cold-side volume.', D, vs.C_H)
 
@@ -358,7 +433,17 @@ def model_full(vs, minimize_model=False, D_val=1e-13, P_val=1e-13, tau_cold_val=
 
 		
 
-		popt, pcov = curve_fit(model, xdata=X, ydata=Y, sigma=U, p0=p0, method='lm', epsfcn=0.1, xtol=1e-14, ftol=1e-10)
+		popt, pcov = curve_fit(
+			model, 
+			xdata=X, 
+			ydata=Y, 
+			sigma=U, 
+			p0=p0, 
+			method='lm', 
+			epsfcn=0.1, 
+			xtol=1e-14, 
+			ftol=1e-10
+		)
 
 		# DEPRICATED
 		# popt, pcov = curve_fit(model, xdata=X, ydata=Y, sigma=U, p0=p0, method='trf', # method='lm', epsfcn=0.1, ftol=1e-10)
