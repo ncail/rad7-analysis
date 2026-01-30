@@ -10,7 +10,10 @@ def parse_raw_data(r7raw_filepath):
     """
     columns = get_raw_data_column_names()
     df = pd.read_csv(r7raw_filepath, header=None, names=columns)
-    print(df.head)
+    # print(df.head)
+
+    # Convert Year to 4 digits (assume 2000+)
+    df["Year"] = df["Year"].apply(lambda x: x + 2000)
 
     # Consolidate datetime columns into one timestamp column.
     df_better_dt = convert_to_datetime(df.copy())
@@ -20,7 +23,7 @@ def parse_raw_data(r7raw_filepath):
     df_pruned_cols.drop(
         columns=[
             "Record Number",
-
+            # Others?
         ],
         inplace=True
     )
@@ -30,10 +33,15 @@ def parse_raw_data(r7raw_filepath):
 
     flags_expanded = df_expanded_cols['Flags Byte'].apply(parse_flags_byte).apply(pd.Series)
     df_expanded_cols = pd.concat([df_expanded_cols, flags_expanded], axis=1)
+    df_expanded_cols.drop(columns=["Flags Byte"], inplace=True)
 
     # Parse units byte column and expand into more columns.
     units_expanded = df_expanded_cols['Units Byte'].apply(parse_units_byte).apply(pd.Series)
     df_expanded_cols = pd.concat([df_expanded_cols, units_expanded], axis=1)
+    df_expanded_cols.drop(columns=["Units Byte"], inplace=True)
+
+    # Sort the columns.
+    # Maybe.
 
     return df_expanded_cols
 # End function.
@@ -138,11 +146,11 @@ def parse_flags_byte(flags_byte: int) -> dict:
     sniff_mode = bool(int(b[-8]))
 
     return {
-        'pump_state': pump_state,
-        'thoron_on': thoron_on,
-        'measurement_type': measurement_type,
-        'auto_mode': auto_mode,
-        'sniff_mode': sniff_mode
+        'Pump State': pump_state,
+        'Thoron On': thoron_on,
+        'Measurement Type': measurement_type,
+        'Auto Mode': auto_mode,
+        'Sniff Mode': sniff_mode
     }
 # End function.
 
@@ -172,11 +180,24 @@ def parse_units_byte(units_byte: int) -> dict:
     temperature_unit = 'C' if b[0] == '1' else 'F'
 
     return {
-        'concentration_unit': concentration_unit,
-        'temperature_unit': temperature_unit
+        'Concentration Unit': concentration_unit,
+        'Temperature Unit': temperature_unit
     }
 # End function.
 
+
+def get_unit(df, variable_name):
+    """
+    Check that the unit of variable is consistent for this rad7 dataframe and return it.
+    Applies best to 'Radon concentration Unit' and 'Temperature Unit'.
+    variable_name must be a column name of the dataframe.
+    """
+    units = df[variable_name].dropna().unique()
+
+    if len(units) != 1:
+        raise ValueError(f"Inconsistent units found: {units}")
+
+    return units[0]
 
 
 
