@@ -10,6 +10,7 @@ def parse_raw_data(r7raw_filepath):
     """
     columns = get_raw_data_column_names()
     df = pd.read_csv(r7raw_filepath, header=None, names=columns)
+    print(df.head)
 
     # Consolidate datetime columns into one timestamp column.
     df_better_dt = convert_to_datetime(df.copy())
@@ -85,7 +86,7 @@ def convert_to_datetime(r7raw_dataframe):
             "Month",
             "Day",
             "Hour",
-            "Minute",
+            "Minute"
       ]]
     )
     r7raw_dataframe.drop(columns=["Year", "Month", "Day", "Hour", "Minute"], inplace=True)
