@@ -44,7 +44,7 @@ code .
 Install extensions for Python and Jupyter if you have not already. Ensure Git is already installed on your system as well (VSCode comes with built-in Git support).
 
 
-**4. Select Python env and Kernel**
+**4. Select Python env and Kernel in VSCode**
 1. Navigate to a python `.py` file in the repository
 2. At the bottom right in VSCode, select the Python Interpeter
 3. Ensure it is set to your conda environment
@@ -74,5 +74,6 @@ In VSCode, periodically pull changes made to `main` branch to your local clone o
     Either:
     * Accept incoming changes (recommended)
     * Or ask me for help
+
 
 
