@@ -13,4 +13,4 @@ __pycache__
 rad7_data/
 
 # Not user-facing programs 
-reference/
+local_data/
