@@ -11,3 +11,6 @@ __pycache__
 
 # Datasets
 rad7_data/
+
+# Not user-facing programs 
+reference/
