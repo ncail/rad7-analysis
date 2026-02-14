@@ -22,7 +22,7 @@ def parse_raw_data(r7raw_filepath):
     df_pruned_cols = df_better_dt.copy()
     df_pruned_cols.drop(
         columns=[
-            "Record Number",
+            "recordNumber",
             # Others?
         ],
         inplace=True
@@ -31,14 +31,14 @@ def parse_raw_data(r7raw_filepath):
     # Parse flags byte column and expand into more columns.
     df_expanded_cols = df_pruned_cols.copy()
 
-    flags_expanded = df_expanded_cols['Flags Byte'].apply(parse_flags_byte).apply(pd.Series)
+    flags_expanded = df_expanded_cols['FlagsByte'].apply(parse_flags_byte).apply(pd.Series)
     df_expanded_cols = pd.concat([df_expanded_cols, flags_expanded], axis=1)
-    df_expanded_cols.drop(columns=["Flags Byte"], inplace=True)
+    df_expanded_cols.drop(columns=["FlagsByte"], inplace=True)
 
     # Parse units byte column and expand into more columns.
-    units_expanded = df_expanded_cols['Units Byte'].apply(parse_units_byte).apply(pd.Series)
+    units_expanded = df_expanded_cols['UnitsByte'].apply(parse_units_byte).apply(pd.Series)
     df_expanded_cols = pd.concat([df_expanded_cols, units_expanded], axis=1)
-    df_expanded_cols.drop(columns=["Units Byte"], inplace=True)
+    df_expanded_cols.drop(columns=["UnitsByte"], inplace=True)
 
     # Sort the columns.
     # Maybe.
@@ -51,29 +51,29 @@ def get_raw_data_column_names():
     # Each RAD7 cycle produces a record containing 23 comma-separated fields.
     # These columns are defined in RAD7 manual pg. 75.
     r7raw_columns = [
-        "Record Number",
+        "recordNumber",
         "Year",
         "Month",
         "Day",
         "Hour",
         "Minute",
-        "Total Counts",
-        "Live Time",
-        "% of total counts in win. A",
-        "% of total counts in win. B",
-        "% of total counts in win. C",
-        "% of total counts in win. D",
-        "High Voltage Level",
-        "High Voltage Duty Cycle",
+        "TotalCounts",
+        "LiveTime",
+        "PercentA",
+        "PercentB",
+        "PercentC",
+        "PercentD",
+        "HighVoltageLevel",
+        "HighVoltageDutyCycle",
         "Temperature",
-        "Relative humidity of sampled air",
-        "Leakage Current",
-        "Battery Voltage",
-        "Pump Current",
-        "Flags Byte",
-        "Radon concentration",
-        "Radon concentration uncertainty",
-        "Units Byte"
+        "RHofSampledAir",
+        "LeakageCurrent",
+        "BatteryVoltage",
+        "PumpCurrent",
+        "FlagsByte",
+        "RnConc",
+        "Uncert_RnConc",
+        "UnitsByte"
     ]
     return r7raw_columns
 # End function.
@@ -88,15 +88,18 @@ def convert_to_datetime(r7raw_dataframe):
     :param r7raw_dataframe: Dataframe created by parse_raw_data()
     :return: Dataframe with modified columns (neatens datetime information)
     """
-    r7raw_dataframe["Timestamp"] = pd.to_datetime(
+    r7raw_dataframe["DateTime"] = pd.to_datetime(
         r7raw_dataframe[[
             "Year",
             "Month",
             "Day",
             "Hour",
             "Minute"
-      ]]
+        ]]
     )
+    # Don't drop them if processing.py might need them? 
+    # Actually processing.py logic was updated to use DateTime.
+    # But let's check processing.py again - it relies on DateTime existence.
     r7raw_dataframe.drop(columns=["Year", "Month", "Day", "Hour", "Minute"], inplace=True)
 
     return r7raw_dataframe
@@ -108,11 +111,11 @@ def parse_flags_byte(flags_byte: int) -> dict:
     Parses the RAD7 flags byte (0-255) into individual components.
 
     Returns a dict with:
-    - pump_state: 'Off', 'On', 'Timed', 'Grab'
-    - thoron_on: True/False
-    - measurement_type: 'Radon in Air', 'WAT-40', 'WAT250', 'Unknown'
-    - auto_mode: True/False
-    - sniff_mode: True/False
+    - PumpState: 'Off', 'On', 'Timed', 'Grab'
+    - ThoronOn: True/False
+    - MeasurementType: 'Radon in Air', 'WAT-40', 'WAT250', 'Unknown'
+    - AutoMode: True/False
+    - SniffMode: True/False
     """
     # Ensure it's 8-bit
     b = format(flags_byte, '08b')  # string '01010101'
@@ -146,11 +149,11 @@ def parse_flags_byte(flags_byte: int) -> dict:
     sniff_mode = bool(int(b[-8]))
 
     return {
-        'Pump State': pump_state,
-        'Thoron On': thoron_on,
-        'Measurement Type': measurement_type,
-        'Auto Mode': auto_mode,
-        'Sniff Mode': sniff_mode
+        'PumpState': pump_state,
+        'ThoronOn': thoron_on,
+        'MeasurementType': measurement_type,
+        'AutoMode': auto_mode,
+        'SniffMode': sniff_mode
     }
 # End function.
 
@@ -160,8 +163,8 @@ def parse_units_byte(units_byte: int) -> dict:
     Parses the RAD7 units byte (0-255) into human-readable units.
 
     Returns a dict with:
-    - concentration_unit: 'Bq/m3', 'pCi/L', 'CPM', 'Total Counts'
-    - temperature_unit: 'C' or 'F'
+    - ConcentrationUnit: 'Bq/m3', 'pCi/L', 'CPM', 'Total Counts'
+    - TemperatureUnit: 'C' or 'F'
     """
     # Ensure it's 8-bit
     b = format(units_byte, '08b')
@@ -180,8 +183,8 @@ def parse_units_byte(units_byte: int) -> dict:
     temperature_unit = 'C' if b[0] == '1' else 'F'
 
     return {
-        'Concentration Unit': concentration_unit,
-        'Temperature Unit': temperature_unit
+        'ConcentrationUnit': concentration_unit,
+        'TemperatureUnit': temperature_unit
     }
 # End function.
 
