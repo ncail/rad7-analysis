@@ -22,7 +22,7 @@ def parse_raw_data(r7raw_filepath):
     df_pruned_cols = df_better_dt.copy()
     df_pruned_cols.drop(
         columns=[
-            "recordNumber",
+            # "recordNumber",
             # Others?
         ],
         inplace=True
