@@ -19,8 +19,6 @@ def calculate_counts(df: pd.DataFrame,
     Adds a 'Counts' column to the DataFrame.
     """
     
-    counts = []
-    
     # Pre-calculate common terms for efficiency
     # matching original logic structure initially, but vectorized for performance. 
     
@@ -89,7 +87,7 @@ def calibrate_data(df: pd.DataFrame) -> pd.DataFrame:
     """
     if 'Counts_Calibration_Basis' not in df.columns:
         # Fallback if not calculated yet
-         df = calculate_counts(df)
+        df = calculate_counts(df)
 
     counts_calib = df['Counts_Calibration_Basis']
     rn_conc = df['RnConc']
@@ -113,9 +111,9 @@ def calibrate_data(df: pd.DataFrame) -> pd.DataFrame:
                 # Original logic was complex and specific. Let's try to do a simple forward/backward fill or mean
                 calib_list[i] = np.mean(subset) if len(subset) > 0 else 1.0 # Default fallback
             else:
-                 # If no future values, look specific backward
-                 subset_back = [x for x in calib_list[:i] if x > 0]
-                 calib_list[i] = np.mean(subset_back) if len(subset_back) > 0 else 1.0
+                # If no future values, look specific backward
+                subset_back = [x for x in calib_list[:i] if x > 0]
+                calib_list[i] = np.mean(subset_back) if len(subset_back) > 0 else 1.0
 
     df['Cnts_to_Bqm3'] = calib_list
     return df
@@ -127,6 +125,11 @@ def process_run(df: pd.DataFrame,
                 only_po214: bool = False) -> pd.DataFrame:
     """
     Processes a single run DataFrame.
+    1. Parses dates
+    2. Calculates counts
+    3. Corrects for RH
+    4. Calibrates
+    5. Rebins
     """
     if df.empty:
         return df
@@ -296,19 +299,12 @@ def stitch_gaps(df: pd.DataFrame, max_gap_min: float = 1.0) -> pd.DataFrame:
     df = df.sort_values('DateTime')
 
     # Create a regular time index
-    # Round start/end to nearest minute or second? Or just use exact?
-    # Original logic inserted points at fixed intervals of `expectedTimeStep_min` (max_gap_min)
+    # max_gap_min is the time resolution of the data
     
     # We want to keep original points and fill gaps.
     # Set DateTime as index
-    df_indexed = df.set_index('DateTime')
-    
-    # Resample to the desired grid (e.g. 1 min)
-    # This will create NaNs where data is missing
-    # However, existing data might not be perfectly on the grid.
-    # We want to UPSAMPLE to a regular grid that includes points covering the gaps.
-    
-    # Simpler approach matching "stitching":
+    df = df.set_index('DateTime')
+
     # 1. Identify gaps > max_gap_min
     # 2. Generate new time points for those gaps
     # 3. Concatenate and sort
@@ -337,14 +333,12 @@ def stitch_gaps(df: pd.DataFrame, max_gap_min: float = 1.0) -> pd.DataFrame:
         loc = df.index.get_loc(idx)
         t_start = df.iloc[loc-1]['DateTime']
         
-        # Determine number of steps to insert
-        delta = (t_end - t_start).total_seconds() / 60.0 # minutes
-        
         # We want points every max_gap_min
         # t_start + n * max_gap_min
         curr_t = t_start + timedelta(minutes=max_gap_min)
         
         while curr_t < t_end:
+            # Stitched will be a boolean series indicating interpolated points
             new_rows.append({'DateTime': curr_t, 'Stitched': 1})
             curr_t += timedelta(minutes=max_gap_min)
             
@@ -355,13 +349,14 @@ def stitch_gaps(df: pd.DataFrame, max_gap_min: float = 1.0) -> pd.DataFrame:
     df_new = pd.DataFrame(new_rows)
     
     # Concatenate
+    # This will make original non-Stitched points in the Stitched column become NaN
     df_combined = pd.concat([df, df_new], ignore_index=True)
     df_combined = df_combined.sort_values('DateTime').reset_index(drop=True)
     
     # Interpolate
     # We only want to interpolate RnConc and Uncert_RnConc, maybe others
     cols_to_interp = ['RnConc', 'Uncert_RnConc', 'Temperature', 'RHofSampledAir']
-    # Filter to existing
+    # Filter to existing columns
     cols_to_interp = [c for c in cols_to_interp if c in df_combined.columns]
     
     # Use time-based interpolation for accuracy
