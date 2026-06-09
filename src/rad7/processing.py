@@ -281,8 +281,11 @@ def place_time_cut(df: pd.DataFrame, t_start: str, t_end: str, fmt: str = '%Y-%m
     start_dt = datetime.strptime(t_start, fmt)
     end_dt = datetime.strptime(t_end, fmt)
     
-    mask = (df['DateTime'] > start_dt) & (df['DateTime'] < end_dt)
-    cut_df = df[mask].copy()
+    try:
+        mask = (df['DateTime'] > start_dt) & (df['DateTime'] < end_dt)
+        cut_df = df[mask].copy()
+    except:
+        raise ValueError("Error in place_time_cut: Could not create mask for time cut. Check DateTime column.")
     
     return cut_df.reset_index(drop=True)
 
