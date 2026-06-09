@@ -174,7 +174,6 @@ def process_runs(run_list: List[pd.DataFrame],
         binned_df = process_run(df, bin_hours, correct_rh, only_po218, only_po214)
         processed_runs.append(binned_df)
         
-    
     # Concatenate all runs
     if not processed_runs:
         return pd.DataFrame()
@@ -276,27 +275,58 @@ def rebin_data(df: pd.DataFrame, bin_hours: float) -> pd.DataFrame:
     
     return binned
 
-def place_time_cut(df: pd.DataFrame, t_start: str, t_end: str, fmt: str = '%Y-%m-%d %H:%M:%S') -> pd.DataFrame:
-    """Cuts data between two timestamps."""
-    start_dt = datetime.strptime(t_start, fmt)
-    end_dt = datetime.strptime(t_end, fmt)
-    
+def place_time_cut(
+    df: pd.DataFrame, 
+    t_start: Union[str, pd.Timestamp], 
+    t_end: Union[str, pd.Timestamp]
+) -> pd.DataFrame:
+    """
+    Cuts data between two timestamps.
+
+    Args:
+        df: The DataFrame containing the data.
+        t_start: The start timestamp (inclusive).
+        t_end: The end timestamp (exclusive).
+
+    Returns:
+        A new DataFrame containing only the data between the specified timestamps.
+    """
+    if df.empty:
+        return df
+        
+    # Ensure sorted by time
+    df = df.sort_values('DateTime')
+
+    # Ensure DateTime is datetime objects
+    if not pd.api.types.is_datetime64_any_dtype(df['DateTime']):
+        df['DateTime'] = pd.to_datetime(df['DateTime'])
+
+    # Ensure timestamps are datetime objects
+    t_start = pd.to_datetime(t_start)
+    t_end = pd.to_datetime(t_end)
+
     try:
-        mask = (df['DateTime'] > start_dt) & (df['DateTime'] < end_dt)
+        mask = (df['DateTime'] >= t_start) & (df['DateTime'] <= t_end)
         cut_df = df[mask].copy()
-    except:
-        raise ValueError("Error in place_time_cut: Could not create mask for time cut. Check DateTime column.")
+    except Exception as e:
+        raise ValueError(f"Error in place_time_cut: {e}")
     
     return cut_df.reset_index(drop=True)
 
-def stitch_gaps(df: pd.DataFrame, max_gap_min: float = 1.0) -> pd.DataFrame:
+def stitch_gaps(df: pd.DataFrame, max_gap_min: float = 1.0) -> tuple[pd.DataFrame, bool, list]:
     """
-    Fills gaps in data larger than max_gap_min with interpolated values.
-    Returns a dataframe with interpolated rows marked.
-    Verified to use linear interpolation on a regular time grid.
+    Fills gaps in data larger than max_gap_min (minutes) with interpolated values.
+    Returns:
+        df: a dataframe with interpolated rows marked.
+        gaps_found: a bool indicating if any gaps were found.
+        gap_date_ranges: a list of date ranges over stiched (gap) data.
     """
+    gaps_found = False
+    gap_date_ranges = []
+
     if df.empty or 'DateTime' not in df.columns:
-        return df
+        print(f"DEBUG: Skipping gap stitch because the dataframe is empty or missing the 'DateTime' column.")
+        return df, gaps_found, gap_date_ranges
 
     # Ensure sorted by time
     df = df.sort_values('DateTime')
@@ -305,9 +335,6 @@ def stitch_gaps(df: pd.DataFrame, max_gap_min: float = 1.0) -> pd.DataFrame:
     # max_gap_min is the time resolution of the data
     
     # We want to keep original points and fill gaps.
-    # Set DateTime as index
-    df = df.set_index('DateTime')
-
     # 1. Identify gaps > max_gap_min
     # 2. Generate new time points for those gaps
     # 3. Concatenate and sort
@@ -318,7 +345,9 @@ def stitch_gaps(df: pd.DataFrame, max_gap_min: float = 1.0) -> pd.DataFrame:
     gap_mask = time_diffs > timedelta(minutes=max_gap_min)
     
     if not gap_mask.any():
-        return df
+        return df, gaps_found, gap_date_ranges
+    
+    gaps_found = True
         
     # We will build a list of new times to insert
     new_rows = []
@@ -335,6 +364,9 @@ def stitch_gaps(df: pd.DataFrame, max_gap_min: float = 1.0) -> pd.DataFrame:
         # We need integer location to get previous
         loc = df.index.get_loc(idx)
         t_start = df.iloc[loc-1]['DateTime']
+
+        # Track the range of stiched data
+        gap_date_ranges.append((t_start, t_end))
         
         # We want points every max_gap_min
         # t_start + n * max_gap_min
@@ -346,7 +378,7 @@ def stitch_gaps(df: pd.DataFrame, max_gap_min: float = 1.0) -> pd.DataFrame:
             curr_t += timedelta(minutes=max_gap_min)
             
     if not new_rows:
-        return df
+        return df, gaps_found, gap_date_ranges
         
     # Create DF from new rows
     df_new = pd.DataFrame(new_rows)
@@ -370,4 +402,4 @@ def stitch_gaps(df: pd.DataFrame, max_gap_min: float = 1.0) -> pd.DataFrame:
     if 'Stitched' in df_combined.columns:
         df_combined['Stitched'] = df_combined['Stitched'].fillna(0).astype(int)
         
-    return df_combined.reset_index()
+    return df_combined.reset_index(), gaps_found, gap_date_ranges
