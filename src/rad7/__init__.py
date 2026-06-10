@@ -8,7 +8,10 @@ from .io import (
 )
 
 from .raw_parser import (
-    parse_raw_data
+    parse_raw_data,
+    expand_byte_column,
+    parse_flags_byte,
+    parse_units_byte
 )
 
 from .processing import (
@@ -37,6 +40,9 @@ __all__ = [
     "read_r7raw",
     "load_data_from_directory",
     "parse_raw_data",
+    "expand_byte_column",
+    "parse_flags_byte",
+    "parse_units_byte",
     "process_run",
     "process_runs",
     "calibrate_data",
