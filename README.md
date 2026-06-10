@@ -53,6 +53,10 @@ Install extensions for Python and Jupyter if you have not already. Ensure Git is
 6. Ensure it is set to a Kernel corresponding to your conda environment
 
 
+**5. Run Notebooks**
+Notebooks in this repository are now ready to be run. Follow instructions in the notebook to input your own data to analyze and display the results.
+
+
 ## Updating the project
 In VSCode, periodically pull changes made to `main` branch to your local clone of the repository.
 > You **do not** need to type any Git commands in VSCode.
