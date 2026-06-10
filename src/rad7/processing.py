@@ -277,6 +277,7 @@ def rebin_data(df: pd.DataFrame, bin_hours: float) -> pd.DataFrame:
 
 def place_time_cut(
     df: pd.DataFrame, 
+    time_column: str,
     t_start: Union[str, pd.Timestamp], 
     t_end: Union[str, pd.Timestamp]
 ) -> pd.DataFrame:
@@ -295,18 +296,18 @@ def place_time_cut(
         return df
         
     # Ensure sorted by time
-    df = df.sort_values('DateTime')
+    df = df.sort_values(time_column)
 
     # Ensure DateTime is datetime objects
-    if not pd.api.types.is_datetime64_any_dtype(df['DateTime']):
-        df['DateTime'] = pd.to_datetime(df['DateTime'])
+    if not pd.api.types.is_datetime64_any_dtype(df[time_column]):
+        df[time_column] = pd.to_datetime(df[time_column])
 
     # Ensure timestamps are datetime objects
     t_start = pd.to_datetime(t_start)
     t_end = pd.to_datetime(t_end)
 
     try:
-        mask = (df['DateTime'] >= t_start) & (df['DateTime'] <= t_end)
+        mask = (df[time_column] >= t_start) & (df[time_column] <= t_end)
         cut_df = df[mask].copy()
     except Exception as e:
         raise ValueError(f"Error in place_time_cut: {e}")
@@ -315,18 +316,22 @@ def place_time_cut(
 
 def stitch_gaps(
     df: pd.DataFrame, 
+    time_column: str,
     cycle_length: float = 20.0,  
     max_gap_min: float = 21.0,
-    interpolate: bool = True
+    interpolate: bool = True,
+    cols_to_interp: list[str] = None
 ) -> tuple[pd.DataFrame, bool, list]:
     """
     Fills gaps in data larger than max_gap_min (minutes) with interpolated values.
 
     Args:
         df: The DataFrame containing the data.
+        time_column: The name of the column containing the timestamps.
         cycle_length: The cycle length in minutes (default 20).
         max_gap_min: The maximum gap size in minutes (default 21).
         interpolate: A boolean indicating whether to interpolate data in the gaps (default True). If False, inserts NaN.
+        cols_to_interp: A list of column names to interpolate (default None). If None, no columns are interpolated.
         
     Note that even with a regular cycle length, the RAD7 data may be spaced a minute longer apart.
     Therefore:
@@ -341,12 +346,12 @@ def stitch_gaps(
     gaps_found = False
     gap_date_ranges = []
 
-    if df.empty or 'DateTime' not in df.columns:
-        print(f"DEBUG: Skipping gap stitch because the dataframe is empty or missing the 'DateTime' column.")
+    if df.empty or time_column not in df.columns:
+        print(f"DEBUG: Skipping gap stitch because the dataframe is empty or missing the '{time_column}' column.")
         return df, gaps_found, gap_date_ranges
 
     # Ensure sorted by time
-    df = df.sort_values('DateTime')
+    df = df.sort_values(time_column)
 
     # Create a regular time index
     # cycle_length is the time resolution of the data
@@ -358,7 +363,7 @@ def stitch_gaps(
     # 4. Interpolate
 
     # Calculate time diffs
-    time_diffs = df['DateTime'].diff()
+    time_diffs = df[time_column].diff()
     gap_mask = time_diffs > timedelta(minutes=max_gap_min)
     
     if not gap_mask.any():
@@ -375,12 +380,12 @@ def stitch_gaps(
     
     for idx in gap_indices:
         # End of gap (current row)
-        t_end = df.loc[idx, 'DateTime']
+        t_end = df.loc[idx, time_column]
         
         # Start of gap (previous row)
         # We need integer location to get previous
         loc = df.index.get_loc(idx)
-        t_start = df.iloc[loc-1]['DateTime']
+        t_start = df.iloc[loc-1][time_column]
 
         # Track the range of stiched data
         gap_date_ranges.append((t_start, t_end))
@@ -390,7 +395,7 @@ def stitch_gaps(
         
         while curr_t < t_end:
             # Stitched will be a boolean series indicating interpolated points
-            new_rows.append({'DateTime': curr_t, 'Stitched': 1})
+            new_rows.append({time_column: curr_t, 'Stitched': 1})
             curr_t += timedelta(minutes=cycle_length)
             
     if not new_rows:
@@ -402,17 +407,15 @@ def stitch_gaps(
     # Concatenate
     # This will make original non-Stitched points in the Stitched column become NaN
     df_combined = pd.concat([df, df_new], ignore_index=True)
-    df_combined = df_combined.sort_values('DateTime').reset_index(drop=True)
+    df_combined = df_combined.sort_values(time_column).reset_index(drop=True)
     
     # Interpolate
-    if interpolate:
-        # We only want to interpolate RnConc and Uncert_RnConc, maybe others
-        cols_to_interp = ['RnConc', 'Uncert_RnConc', 'Temperature', 'RHofSampledAir']
+    if interpolate and cols_to_interp is not None:
         # Filter to existing columns
         cols_to_interp = [c for c in cols_to_interp if c in df_combined.columns]
     
         # Use time-based interpolation for accuracy
-        df_combined = df_combined.set_index('DateTime')
+        df_combined = df_combined.set_index(time_column)
         df_combined[cols_to_interp] = df_combined[cols_to_interp].interpolate(method='time')
     # End interpolation
     
