@@ -1,6 +1,11 @@
+"""
+This module is for parsing raw RAD7 data files (`.r7raw` files) which have a standard format defined by the RAD7 manual (page 75).
+"""
+
 
 # Imports
 import pandas as pd
+from typing import Callable
 
 
 def parse_raw_data(r7raw_filepath):
@@ -30,21 +35,40 @@ def parse_raw_data(r7raw_filepath):
 
     # Parse flags byte column and expand into more columns.
     df_expanded_cols = df_pruned_cols.copy()
-
-    flags_expanded = df_expanded_cols['FlagsByte'].apply(parse_flags_byte).apply(pd.Series)
-    df_expanded_cols = pd.concat([df_expanded_cols, flags_expanded], axis=1)
-    df_expanded_cols.drop(columns=["FlagsByte"], inplace=True)
+    df_expanded_cols = expand_byte_column(df_expanded_cols, "FlagsByte")
 
     # Parse units byte column and expand into more columns.
-    units_expanded = df_expanded_cols['UnitsByte'].apply(parse_units_byte).apply(pd.Series)
-    df_expanded_cols = pd.concat([df_expanded_cols, units_expanded], axis=1)
-    df_expanded_cols.drop(columns=["UnitsByte"], inplace=True)
+    df_expanded_cols = expand_byte_column(df_expanded_cols, "UnitsByte")
 
     # Sort the columns.
     # Maybe.
 
     return df_expanded_cols
 # End function.
+
+
+def expand_byte_column(
+    rad_df,
+    parse_function: Callable,
+    byte_column_name: str
+):
+    """
+    Wrapper for parse_flags_byte() or parse_units_byte() for use with DataFrames.
+
+    Params:
+        rad_df (pd.DataFrame): RAD7 dataframe
+        parse_function (function): Function to parse the byte column (e.g. parse_flags_byte or parse_units_byte)
+        byte_column_name (str): Column name of the byte column
+    
+    Returns:
+        pd.DataFrame: Dataframe with expanded byte columns
+    """
+    
+    byte_expanded = rad_df[byte_column_name].apply(parse_function).apply(pd.Series)
+    df_expanded_cols = pd.concat([rad_df, byte_expanded], axis=1)
+    df_expanded_cols.drop(columns=[byte_column_name], inplace=True)
+    
+    return df_expanded_cols
 
 
 def get_raw_data_column_names():
@@ -118,7 +142,7 @@ def parse_flags_byte(flags_byte: int) -> dict:
     - SniffMode: True/False
     """
     # Ensure it's 8-bit
-    b = format(flags_byte, '08b')  # string '01010101'
+    b = format(int(flags_byte), '08b')  # string '01010101'
 
     # Pump state bits 0-1 (least significant)
     pump_bits = b[-2:]
